@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Place Order — Dairich Distributor Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dist-portal.css">
+</head>
+<body>
+
+<nav class="portal-bar">
+  <a href="profile.html" class="pbar-logo">Dairich <span>Distributor Portal</span></a>
+  <ul class="pbar-nav">
+    <li><a href="profile.html">Dashboard</a></li>
+    <li><a href="place.html" class="active">Place Order</a></li>
+    <li><a href="orders_list.html">My Orders</a></li>
+    <li><a href="feedback_list.html">Feedback</a></li>
+  </ul>
+  <div class="pbar-right">
+    <div class="pbar-user"><div class="pbar-avatar" id="avatarInitial">D</div><span id="companyName">…</span></div>
+    <a href="#" class="pbar-logout" id="logoutBtn">Logout</a>
+  </div>
+</nav>
+
+<div class="portal-page">
+  <div class="dash-wrap" style="max-width:860px;">
+
+    <div class="page-hdr">
+      <p class="page-hdr-tag">New Order</p>
+      <h1 class="page-hdr-title">Place a <span>Bulk Order</span></h1>
+    </div>
+
+    <div class="alert alert-err" id="errBanner" style="display:none;"></div>
+    <div class="alert alert-ok"  id="okBanner"  style="display:none;"></div>
+
+    <form id="orderForm" novalidate>
+
+      <!-- PRODUCT SELECTION -->
+      <div class="section-card reveal">
+        <div class="section-card-title">Select Products</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:18px;">Click a product to select it, then enter quantity in boxes.</p>
+        <div class="flav-grid" id="productGrid">
+          <div style="color:var(--muted);font-size:14px;">Loading products…</div>
+        </div>
+        <span class="field-err" id="err-products" style="margin-top:8px;display:none;">Please select at least one product.</span>
+      </div>
+
+      <!-- ORDER SUMMARY -->
+      <div class="section-card reveal d1" id="summaryCard" style="display:none;">
+        <div class="section-card-title">Order Summary</div>
+        <div id="summaryRows"></div>
+        <div style="border-top:2px solid var(--border);margin-top:16px;padding-top:16px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:15px;font-weight:700;color:var(--dark);">Estimated Total</span>
+          <span style="font-family:'Playfair Display',serif;font-size:26px;font-weight:900;color:var(--red);" id="totalAmount">₹0</span>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-top:6px;">*Final pricing confirmed by Dairich team after order review.</p>
+      </div>
+
+      <!-- NOTES -->
+      <div class="section-card reveal d2">
+        <div class="section-card-title">Additional Notes</div>
+        <div class="form-group" style="margin:0;">
+          <label>Special Requirements / Delivery Instructions</label>
+          <textarea id="notes" placeholder="e.g. Deliver before 10am, cold storage available at our end…"></textarea>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-primary reveal d3" id="submitBtn">Submit Order Request</button>
+    </form>
+
+  </div>
+</div>
+
+<footer class="portal-footer">
+  <div class="portal-footer-logo">Dairich</div>
+  <div class="portal-footer-copy">© 2024 Dairich Ice Cream. All Rights Reserved.</div>
+</footer>
+
+<script>
+  const token   = localStorage.getItem('dairich_token');
+  const company = localStorage.getItem('dairich_company') || 'Distributor';
+  if (!token) window.location.href = 'login.html';
+  document.getElementById('companyName').textContent   = company;
+  document.getElementById('avatarInitial').textContent = company.charAt(0).toUpperCase();
+
+  const AUTH = { headers: { 'Authorization': 'Bearer ' + token } };
+
+  /* emoji map for flavours */
+  const emojiMap = { 'Kesar Pista':'🍨','Black Current':'🫐','Chappan Bhog':'🍧','Badam Roasted':'🌰','Anjeer Badam':'🍦','Choco Chips':'🍫','Chocolate':'🍫','Strawberry':'🍓','Vanilla':'🍦','Chocobar':'🍫' };
+
+  let products   = [];
+  let quantities = {}; /* product_id → qty */
+
+  /* ── load products ── */
+  async function loadProducts() {
+    try {
+      const res  = await fetch('api/products/productlist.php', AUTH);
+      const data = await res.json();
+      products = data.products || [];
+      renderProducts();
+    } catch {
+      document.getElementById('productGrid').innerHTML = '<div class="alert alert-err">Could not load products.</div>';
+    }
+  }
+
+  function renderProducts() {
+    const grid = document.getElementById('productGrid');
+    if (!products.length) { grid.innerHTML = '<p style="color:var(--muted)">No products available.</p>'; return; }
+    grid.innerHTML = products.map(p => `
+      <div class="flav-item" id="item-${p.id}" onclick="toggleProduct(${p.id})">
+        <span class="flav-emoji">${emojiMap[p.name]||'🍦'}</span>
+        <div>
+          <div class="flav-name">${p.name}</div>
+          <div style="font-size:11px;color:var(--muted);">${p.tag||''}</div>
+        </div>
+      </div>
+      <div class="form-group" id="qty-wrap-${p.id}" style="display:none;margin-top:-4px;margin-bottom:4px;">
+        <label>Boxes (${p.name})</label>
+        <input type="number" id="qty-${p.id}" min="1" placeholder="e.g. 10" oninput="updateSummary()">
+        <span class="field-err" id="err-qty-${p.id}">Enter a valid quantity (min 1).</span>
+      </div>
+    `).join('');
+  }
+
+  function toggleProduct(id) {
+    const item = document.getElementById('item-' + id);
+    const wrap = document.getElementById('qty-wrap-' + id);
+    const picked = item.classList.toggle('picked');
+    wrap.style.display = picked ? 'flex' : 'none';
+    if (!picked) { delete quantities[id]; updateSummary(); }
+    else document.getElementById('qty-' + id).focus();
+  }
+
+  function updateSummary() {
+    const selected = products.filter(p => document.getElementById('item-'+p.id)?.classList.contains('picked'));
+    quantities = {};
+    let rows = '';
+    selected.forEach(p => {
+      const qty = parseInt(document.getElementById('qty-'+p.id)?.value) || 0;
+      if (qty > 0) quantities[p.id] = qty;
+      rows += `<div class="info-row"><span class="info-key">${p.name}</span><span class="info-val">${qty} box${qty!==1?'es':''}${p.price_per_box?' — ₹'+(qty*p.price_per_box).toLocaleString('en-IN'):''}</span></div>`;
+    });
+    const card = document.getElementById('summaryCard');
+    if (selected.length) {
+      card.style.display = 'block';
+      document.getElementById('summaryRows').innerHTML = rows;
+      const total = selected.reduce((s,p)=>{ const q=quantities[p.id]||0; return s+(p.price_per_box?q*p.price_per_box:0); },0);
+      document.getElementById('totalAmount').textContent = total ? '₹'+total.toLocaleString('en-IN') : 'TBD';
+    } else { card.style.display = 'none'; }
+  }
+
+  /* ── submit ── */
+  document.getElementById('orderForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const selected = products.filter(p => document.getElementById('item-'+p.id)?.classList.contains('picked'));
+    if (!selected.length) {
+      document.getElementById('err-products').style.display = 'block';
+      return;
+    }
+    document.getElementById('err-products').style.display = 'none';
+
+    let valid = true;
+    selected.forEach(p => {
+      const qty = parseInt(document.getElementById('qty-'+p.id)?.value);
+      if (!qty || qty < 1) {
+        document.getElementById('err-qty-'+p.id).classList.add('show');
+        document.getElementById('qty-'+p.id).classList.add('error');
+        valid = false;
+      } else {
+        document.getElementById('err-qty-'+p.id).classList.remove('show');
+        document.getElementById('qty-'+p.id).classList.remove('error');
+      }
+    });
+    if (!valid) return;
+
+    const btn = document.getElementById('submitBtn');
+    btn.textContent = 'Submitting…'; btn.disabled = true;
+
+    const items = selected.map(p => ({ product_id: p.id, quantity_boxes: quantities[p.id] || parseInt(document.getElementById('qty-'+p.id).value) }));
+    const notes = document.getElementById('notes').value.trim();
+
+    try {
+      const res  = await fetch('api/orders/place.php', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items, notes })
+      });
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('okBanner').innerHTML = '✅ Order placed successfully! <a href="orders_list.html" style="color:var(--success);font-weight:700;margin-left:8px;">View Orders →</a>';
+        document.getElementById('okBanner').style.display = 'flex';
+        document.getElementById('orderForm').style.display = 'none';
+        window.scrollTo(0,0);
+      } else {
+        document.getElementById('errBanner').innerHTML = '⚠️ ' + data.message;
+        document.getElementById('errBanner').style.display = 'flex';
+        btn.textContent = 'Submit Order Request'; btn.disabled = false;
+      }
+    } catch {
+      document.getElementById('errBanner').innerHTML = '⚠️ Network error. Please try again.';
+      document.getElementById('errBanner').style.display = 'flex';
+      btn.textContent = 'Submit Order Request'; btn.disabled = false;
+    }
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', e => {
+    e.preventDefault();
+    fetch('api/distributor/logout.php', { method:'POST', headers:{'Authorization':'Bearer '+token} });
+    localStorage.clear(); window.location.href = 'login.html';
+  });
+
+  loadProducts();
+  const ro = new IntersectionObserver(entries => entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');ro.unobserve(e.target);} }), {threshold:0.1});
+  document.querySelectorAll('.reveal').forEach(el => ro.observe(el));
+</script>
+</body>
+</html>

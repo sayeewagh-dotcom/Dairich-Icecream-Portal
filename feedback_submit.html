@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submit Feedback — Dairich Distributor Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dist-portal.css">
+  <style>
+    .star-row { display:flex; gap:8px; margin:8px 0 4px; }
+    .star { font-size:32px; cursor:pointer; opacity:0.3; transition:all 0.15s; user-select:none; }
+    .star.lit { opacity:1; transform:scale(1.15); }
+    .star:hover { opacity:0.8; }
+  </style>
+</head>
+<body>
+
+<nav class="portal-bar">
+  <a href="profile.html" class="pbar-logo">Dairich <span>Distributor Portal</span></a>
+  <ul class="pbar-nav">
+    <li><a href="profile.html">Dashboard</a></li>
+    <li><a href="place.html">Place Order</a></li>
+    <li><a href="orders_list.html">My Orders</a></li>
+    <li><a href="feedback_list.html" class="active">Feedback</a></li>
+  </ul>
+  <div class="pbar-right">
+    <div class="pbar-user"><div class="pbar-avatar" id="avatarInitial">D</div><span id="companyName">…</span></div>
+    <a href="#" class="pbar-logout" id="logoutBtn">Logout</a>
+  </div>
+</nav>
+
+<div class="portal-page">
+  <div class="dash-wrap" style="max-width:600px;">
+
+    <div style="margin-bottom:24px;">
+      <a href="orders_list.html" style="font-size:13px;color:var(--muted);text-decoration:none;">&larr; Back to Orders</a>
+    </div>
+
+    <div class="page-hdr">
+      <p class="page-hdr-tag">Share Your Experience</p>
+      <h1 class="page-hdr-title">Leave <span>Feedback</span></h1>
+    </div>
+
+    <div class="alert alert-err" id="errBanner" style="display:none;"></div>
+    <div class="alert alert-ok"  id="okBanner"  style="display:none;"></div>
+
+    <div class="section-card reveal" id="formCard">
+      <p style="font-size:14px;color:var(--muted);margin-bottom:24px;">Your feedback helps us improve. Only available for delivered orders.</p>
+
+      <form id="fbForm" novalidate>
+
+        <div class="form-group">
+          <label>Order ID</label>
+          <input type="number" id="order_id" placeholder="Enter order ID" min="1" readonly style="background:#f8f4ee;">
+          <span class="field-err" id="err-order_id">Valid order ID required.</span>
+        </div>
+
+        <div class="form-group">
+          <label>Rating</label>
+          <div class="star-row" id="starRow">
+            <span class="star" data-val="1">⭐</span>
+            <span class="star" data-val="2">⭐</span>
+            <span class="star" data-val="3">⭐</span>
+            <span class="star" data-val="4">⭐</span>
+            <span class="star" data-val="5">⭐</span>
+          </div>
+          <input type="hidden" id="rating" value="0">
+          <span class="field-err" id="err-rating">Please select a rating.</span>
+        </div>
+
+        <div class="form-group">
+          <label>Message <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb;">(optional)</span></label>
+          <textarea id="message" placeholder="Tell us about your experience with this order…"></textarea>
+        </div>
+
+        <button type="submit" class="btn-primary" id="fbBtn">Submit Feedback</button>
+      </form>
+    </div>
+
+  </div>
+</div>
+
+<footer class="portal-footer">
+  <div class="portal-footer-logo">Dairich</div>
+  <div class="portal-footer-copy">© 2024 Dairich Ice Cream. All Rights Reserved.</div>
+</footer>
+
+<script>
+  const token   = localStorage.getItem('dairich_token');
+  const company = localStorage.getItem('dairich_company') || 'Distributor';
+  if (!token) window.location.href = 'login.html';
+  document.getElementById('companyName').textContent   = company;
+  document.getElementById('avatarInitial').textContent = company.charAt(0).toUpperCase();
+
+  /* pre-fill order_id from URL */
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('order_id')) document.getElementById('order_id').value = params.get('order_id');
+
+  /* ── star rating ── */
+  let selectedRating = 0;
+  document.querySelectorAll('.star').forEach(star => {
+    star.addEventListener('click', function() {
+      selectedRating = parseInt(this.dataset.val);
+      document.getElementById('rating').value = selectedRating;
+      document.querySelectorAll('.star').forEach((s,i) => s.classList.toggle('lit', i < selectedRating));
+      document.getElementById('err-rating').classList.remove('show');
+    });
+    star.addEventListener('mouseover', function() {
+      const v = parseInt(this.dataset.val);
+      document.querySelectorAll('.star').forEach((s,i) => s.classList.toggle('lit', i < v));
+    });
+    star.addEventListener('mouseout', function() {
+      document.querySelectorAll('.star').forEach((s,i) => s.classList.toggle('lit', i < selectedRating));
+    });
+  });
+
+  /* ── submit ── */
+  document.getElementById('fbForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    let valid = true;
+
+    const orderId = parseInt(document.getElementById('order_id').value);
+    const rating  = parseInt(document.getElementById('rating').value);
+    const message = document.getElementById('message').value.trim();
+
+    if (!orderId || orderId < 1) { document.getElementById('err-order_id').classList.add('show'); valid = false; }
+    else document.getElementById('err-order_id').classList.remove('show');
+
+    if (!rating || rating < 1) { document.getElementById('err-rating').classList.add('show'); valid = false; }
+    else document.getElementById('err-rating').classList.remove('show');
+
+    if (!valid) return;
+
+    const btn = document.getElementById('fbBtn');
+    btn.textContent = 'Submitting…'; btn.disabled = true;
+
+    try {
+      const res  = await fetch('api/feedback/submit.php', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: orderId, rating, message })
+      });
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('okBanner').innerHTML = '✅ ' + data.message + ' <a href="feedback_list.html" style="color:var(--success);font-weight:700;margin-left:8px;">View All Feedback →</a>';
+        document.getElementById('okBanner').style.display = 'flex';
+        document.getElementById('formCard').style.display = 'none';
+      } else {
+        document.getElementById('errBanner').innerHTML = '⚠️ ' + data.message;
+        document.getElementById('errBanner').style.display = 'flex';
+        btn.textContent = 'Submit Feedback'; btn.disabled = false;
+      }
+    } catch {
+      document.getElementById('errBanner').innerHTML = '⚠️ Network error. Please try again.';
+      document.getElementById('errBanner').style.display = 'flex';
+      btn.textContent = 'Submit Feedback'; btn.disabled = false;
+    }
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', e => {
+    e.preventDefault();
+    fetch('api/distributor/logout.php', { method:'POST', headers:{'Authorization':'Bearer '+token} });
+    localStorage.clear(); window.location.href = 'login.html';
+  });
+
+  const ro = new IntersectionObserver(entries => entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('vis');ro.unobserve(e.target);} }), {threshold:0.1});
+  document.querySelectorAll('.reveal').forEach(el => ro.observe(el));
+</script>
+</body>
+</html>

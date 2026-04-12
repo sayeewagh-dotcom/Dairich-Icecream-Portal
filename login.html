@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Dairich Distributor Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dist-portal.css">
+</head>
+<body>
+
+<div class="auth-page">
+
+  <!-- LEFT PANEL -->
+  <div class="auth-left">
+    <div class="auth-left-logo">Dairich</div>
+    <h1 class="auth-left-title">Your Partner<br>in <span class="yt">Premium</span><br>Ice Cream.</h1>
+    <p class="auth-left-sub">Access your distributor dashboard to place bulk orders, track deliveries, and manage your account.</p>
+    <div class="auth-perks">
+      <div class="auth-perk"><div class="auth-perk-icon">🧾</div><span>Instant bulk order placement</span></div>
+      <div class="auth-perk"><div class="auth-perk-icon">📦</div><span>Real-time delivery tracking</span></div>
+      <div class="auth-perk"><div class="auth-perk-icon">⭐</div><span>Submit and review feedback</span></div>
+    </div>
+  </div>
+
+  <!-- RIGHT FORM PANEL -->
+  <div class="auth-right">
+    <div class="auth-card">
+
+      <p style="font-size:12px;letter-spacing:1.5px;font-weight:700;text-transform:uppercase;color:var(--red);margin-bottom:8px;">Distributor Portal</p>
+      <h2 class="auth-card-title">Welcome Back</h2>
+      <p class="auth-card-sub">Sign in to your distributor account</p>
+
+      <div class="alert alert-err" id="errBanner" style="display:none;"></div>
+
+      <form id="loginForm" novalidate>
+
+        <div class="form-group">
+          <label>Business Email</label>
+          <input type="email" id="email" placeholder="you@company.com" autocomplete="email">
+          <span class="field-err" id="err-email">Please enter a valid email address.</span>
+        </div>
+
+        <div class="form-group">
+          <label>Password</label>
+          <div class="pw-wrap">
+            <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password">
+            <button type="button" class="pw-toggle" onclick="togglePw('password',this)">👁</button>
+          </div>
+          <span class="field-err" id="err-password">Password is required.</span>
+        </div>
+
+        <div style="text-align:right;margin-top:-10px;margin-bottom:22px;">
+          <a href="#" style="font-size:13px;color:var(--muted);text-decoration:none;">Forgot password?</a>
+        </div>
+
+        <button type="submit" class="btn-primary" id="loginBtn">Sign In</button>
+      </form>
+
+      <div class="auth-switch">New distributor? <a href="register.html">Create an account &rarr;</a></div>
+      <div style="text-align:center;margin-top:12px;">
+        <a href="index.html" style="font-size:13px;color:var(--muted);text-decoration:none;">&larr; Back to Dairich.com</a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  /* redirect if already logged in */
+  if (localStorage.getItem('dairich_token')) window.location.href = 'profile.html';
+
+  function togglePw(id, btn) {
+    const i = document.getElementById(id);
+    i.type = i.type === 'password' ? 'text' : 'password';
+    btn.textContent = i.type === 'password' ? '👁' : '🙈';
+  }
+  function showErr(id) { document.getElementById('err-'+id).classList.add('show'); document.getElementById(id).classList.add('error'); }
+  function clearErr(id){ document.getElementById('err-'+id).classList.remove('show'); document.getElementById(id).classList.remove('error'); }
+
+  document.getElementById('email').addEventListener('blur', function() {
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.value.trim()) ? clearErr('email') : showErr('email');
+  });
+  document.getElementById('password').addEventListener('blur', function() {
+    this.value.trim() ? clearErr('password') : showErr('password');
+  });
+
+  document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    let valid = true;
+    const email = document.getElementById('email').value.trim();
+    const pass  = document.getElementById('password').value.trim();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showErr('email');    valid = false; } else clearErr('email');
+    if (!pass)                                       { showErr('password'); valid = false; } else clearErr('password');
+    if (!valid) return;
+
+    const btn = document.getElementById('loginBtn');
+    btn.textContent = 'Signing in…'; btn.disabled = true;
+
+    try {
+      const res  = await fetch('api/distributor/login.php', {
+        method: 'POST',
+        body: new URLSearchParams({ email, password: pass })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        localStorage.setItem('dairich_token',    data.token);
+        localStorage.setItem('dairich_company',  data.distributor.company_name);
+        localStorage.setItem('dairich_dist_id',  data.distributor.id);
+        window.location.href = 'profile.html';
+      } else {
+        const b = document.getElementById('errBanner');
+        b.innerHTML = '⚠️ ' + data.message; b.style.display = 'flex';
+        btn.textContent = 'Sign In'; btn.disabled = false;
+      }
+    } catch {
+      const b = document.getElementById('errBanner');
+      b.innerHTML = '⚠️ Network error. Please try again.'; b.style.display = 'flex';
+      btn.textContent = 'Sign In'; btn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

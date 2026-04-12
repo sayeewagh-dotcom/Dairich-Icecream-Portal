@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Track Order — Dairich Distributor Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dist-portal.css">
+</head>
+<body>
+
+<nav class="portal-bar">
+  <a href="profile.html" class="pbar-logo">Dairich <span>Distributor Portal</span></a>
+  <ul class="pbar-nav">
+    <li><a href="profile.html">Dashboard</a></li>
+    <li><a href="place.html">Place Order</a></li>
+    <li><a href="orders_list.html" class="active">My Orders</a></li>
+    <li><a href="feedback_list.html">Feedback</a></li>
+  </ul>
+  <div class="pbar-right">
+    <div class="pbar-user"><div class="pbar-avatar" id="avatarInitial">D</div><span id="companyName">…</span></div>
+    <a href="#" class="pbar-logout" id="logoutBtn">Logout</a>
+  </div>
+</nav>
+
+<div class="portal-page">
+  <div class="dash-wrap" style="max-width:680px;">
+
+    <div style="margin-bottom:24px;">
+      <a href="orders_list.html" style="font-size:13px;color:var(--muted);text-decoration:none;">&larr; Back to Orders</a>
+    </div>
+
+    <div class="page-hdr">
+      <p class="page-hdr-tag">Delivery Tracking</p>
+      <h1 class="page-hdr-title">Track <span>Order</span></h1>
+    </div>
+
+    <div id="trackContent">
+      <div style="text-align:center;padding:48px;color:var(--muted);">Loading tracking info…</div>
+    </div>
+
+  </div>
+</div>
+
+<footer class="portal-footer">
+  <div class="portal-footer-logo">Dairich</div>
+  <div class="portal-footer-copy">© 2024 Dairich Ice Cream. All Rights Reserved.</div>
+</footer>
+
+<script>
+  const token   = localStorage.getItem('dairich_token');
+  const company = localStorage.getItem('dairich_company') || 'Distributor';
+  if (!token) window.location.href = 'login.html';
+  document.getElementById('companyName').textContent   = company;
+  document.getElementById('avatarInitial').textContent = company.charAt(0).toUpperCase();
+
+  const params   = new URLSearchParams(window.location.search);
+  const order_id = params.get('order_id');
+  if (!order_id) window.location.href = 'orders_list.html';
+
+  /* timeline steps in order */
+  const STEPS = [
+    { key:'pending',    label:'Order Placed',      sub:'Your order has been received.',          icon:'🧾' },
+    { key:'confirmed',  label:'Order Confirmed',   sub:'Dairich has confirmed your order.',       icon:'✅' },
+    { key:'dispatched', label:'Out for Delivery',  sub:'Your order is on its way!',              icon:'🚚' },
+    { key:'delivered',  label:'Delivered',          sub:'Order delivered successfully.',          icon:'🏁' },
+  ];
+  const ORDER = ['pending','confirmed','dispatched','delivered'];
+
+  async function loadTracking() {
+    try {
+      const res  = await fetch(`api/delivery/track.php?order_id=${order_id}`, { headers:{'Authorization':'Bearer '+token} });
+      const data = await res.json();
+
+      if (!data.success) {
+        document.getElementById('trackContent').innerHTML = `<div class="alert alert-err">${data.message}</div>`;
+        return;
+      }
+
+      const d         = data.delivery;
+      const curIndex  = ORDER.indexOf(d.status);
+
+      const timelineHTML = STEPS.map((step, i) => {
+        const done   = i < curIndex;
+        const active = i === curIndex;
+        return `
+          <div class="tl-step">
+            <div class="tl-dot-wrap">
+              <div class="tl-dot ${done?'done':''} ${active?'active':''}">${done?'✓':step.icon}</div>
+            </div>
+            <div class="tl-body">
+              <div class="tl-title" style="color:${active?'var(--red)':done?'var(--dark)':'var(--muted)'}">${step.label}</div>
+              <div class="tl-sub">${active||done ? step.sub : 'Waiting…'}</div>
+            </div>
+          </div>`;
+      }).join('');
+
+      document.getElementById('trackContent').innerHTML = `
+        <div class="section-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;flex-wrap:wrap;gap:12px;">
+            <div>
+              <div style="font-size:13px;color:var(--muted);margin-bottom:4px;">Order #${order_id}</div>
+              <div style="font-size:20px;font-weight:700;color:var(--dark);">
+                ${d.status==='delivered'?'🎉 Delivered!':d.status==='dispatched'?'🚚 On the way!':'⏳ Processing'}
+              </div>
+            </div>
+            <div style="text-align:right;">
+              ${d.expected_date?`<div style="font-size:12px;color:var(--muted);">Expected Delivery</div><div style="font-size:16px;font-weight:700;color:var(--navy);">${new Date(d.expected_date).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}</div>`:''}
+              ${d.delivered_date?`<div style="font-size:12px;color:var(--muted);margin-top:6px;">Delivered On</div><div style="font-size:16px;font-weight:700;color:var(--success);">${new Date(d.delivered_date).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}</div>`:''}
+            </div>
+          </div>
+
+          <div class="timeline">${timelineHTML}</div>
+
+          ${d.tracking_notes?`<div class="alert alert-info" style="margin-top:20px;margin-bottom:0;">📋 <strong>Note:</strong> ${d.tracking_notes}</div>`:''}
+        </div>
+
+        <div style="display:flex;gap:14px;flex-wrap:wrap;">
+          <a href="detail.html?order_id=${order_id}" class="btn-secondary">View Order Details</a>
+          ${d.status==='delivered'?`<a href="feedback_submit.html?order_id=${order_id}" class="btn-primary" style="width:auto;padding:14px 28px;">Leave Feedback</a>`:''}
+        </div>
+      `;
+    } catch {
+      document.getElementById('trackContent').innerHTML = '<div class="alert alert-err">Could not load tracking information.</div>';
+    }
+  }
+
+  document.getElementById('logoutBtn').addEventListener('click', e => {
+    e.preventDefault();
+    fetch('api/distributor/logout.php', { method:'POST', headers:{'Authorization':'Bearer '+token} });
+    localStorage.clear(); window.location.href = 'login.html';
+  });
+
+  loadTracking();
+</script>
+</body>
+</html>

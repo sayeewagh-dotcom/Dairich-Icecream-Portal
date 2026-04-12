@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register — Dairich Distributor Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dist-portal.css">
+</head>
+<body>
+
+<div class="auth-page">
+
+  <!-- LEFT PANEL -->
+  <div class="auth-left">
+    <div class="auth-left-logo">Dairich</div>
+    <h1 class="auth-left-title">Join Our<br><span class="yt">Distributor</span><br>Network.</h1>
+    <p class="auth-left-sub">Partner with Dairich and bring premium artisanal ice cream to your region. Fill in your details to get started.</p>
+    <div class="auth-perks">
+      <div class="auth-perk"><div class="auth-perk-icon">🤝</div><span>Exclusive B2B pricing & margins</span></div>
+      <div class="auth-perk"><div class="auth-perk-icon">🚚</div><span>Cold-chain logistics support</span></div>
+      <div class="auth-perk"><div class="auth-perk-icon">📊</div><span>Dedicated distributor dashboard</span></div>
+    </div>
+  </div>
+
+  <!-- RIGHT FORM PANEL -->
+  <div class="auth-right">
+    <div class="auth-card" style="max-width:480px;">
+
+      <p style="font-size:12px;letter-spacing:1.5px;font-weight:700;text-transform:uppercase;color:var(--red);margin-bottom:8px;">Distributor Portal</p>
+      <h2 class="auth-card-title">Create Account</h2>
+      <p class="auth-card-sub">Takes less than 2 minutes. Admin approval required after signup.</p>
+
+      <div class="alert alert-info" id="pendingNote">
+        ℹ️ Your account will be <strong>reviewed by admin</strong> before you can log in.
+      </div>
+
+      <div class="alert alert-err" id="errBanner" style="display:none;"></div>
+      <div class="alert alert-ok"  id="okBanner"  style="display:none;"></div>
+
+      <form id="regForm" novalidate>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Company / Business Name</label>
+            <input type="text" id="company_name" placeholder="e.g. Sharma Distributors">
+            <span class="field-err" id="err-company_name">Company name is required.</span>
+          </div>
+          <div class="form-group">
+            <label>Business Email</label>
+            <input type="email" id="email" placeholder="you@company.com">
+            <span class="field-err" id="err-email">Enter a valid email address.</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Enquiry ID <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb;">(optional — if you submitted an enquiry)</span></label>
+          <input type="number" id="enquiry_id" placeholder="Leave blank if not applicable" min="1">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Password</label>
+            <div class="pw-wrap">
+              <input type="password" id="password" placeholder="Min. 8 characters">
+              <button type="button" class="pw-toggle" onclick="togglePw('password',this)">👁</button>
+            </div>
+            <span class="field-err" id="err-password">Min. 8 characters required.</span>
+          </div>
+          <div class="form-group">
+            <label>Confirm Password</label>
+            <div class="pw-wrap">
+              <input type="password" id="confirm_password" placeholder="Repeat password">
+              <button type="button" class="pw-toggle" onclick="togglePw('confirm_password',this)">👁</button>
+            </div>
+            <span class="field-err" id="err-confirm_password">Passwords do not match.</span>
+          </div>
+        </div>
+
+        <!-- Password strength bar -->
+        <div style="margin-top:-10px;margin-bottom:18px;">
+          <div style="height:4px;background:#eee;border-radius:4px;overflow:hidden;">
+            <div id="pwStrengthBar" style="height:100%;width:0%;border-radius:4px;transition:all 0.3s;"></div>
+          </div>
+          <span id="pwStrengthLbl" style="font-size:11px;color:var(--muted);margin-top:4px;display:block;"></span>
+        </div>
+
+        <button type="submit" class="btn-primary" id="regBtn">Create Account</button>
+      </form>
+
+      <div class="auth-switch">Already have an account? <a href="login.html">Sign in &rarr;</a></div>
+      <div style="text-align:center;margin-top:12px;">
+        <a href="index.html" style="font-size:13px;color:var(--muted);text-decoration:none;">&larr; Back to Dairich.com</a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── helpers ── */
+  function togglePw(id, btn) {
+    const i = document.getElementById(id);
+    i.type = i.type === 'password' ? 'text' : 'password';
+    btn.textContent = i.type === 'password' ? '👁' : '🙈';
+  }
+  function showErr(id, msg) {
+    const el = document.getElementById('err-' + id);
+    if (msg) el.textContent = msg;
+    el.classList.add('show');
+    document.getElementById(id).classList.add('error');
+  }
+  function clearErr(id) {
+    document.getElementById('err-' + id)?.classList.remove('show');
+    document.getElementById(id)?.classList.remove('error');
+  }
+  function showBanner(type, msg) {
+    document.getElementById('errBanner').style.display = 'none';
+    document.getElementById('okBanner').style.display  = 'none';
+    const el = document.getElementById(type === 'ok' ? 'okBanner' : 'errBanner');
+    el.innerHTML = msg; el.style.display = 'flex';
+  }
+
+  /* ── password strength ── */
+  document.getElementById('password').addEventListener('input', function() {
+    const v = this.value;
+    let score = 0;
+    if (v.length >= 8)  score++;
+    if (/[A-Z]/.test(v)) score++;
+    if (/[0-9]/.test(v)) score++;
+    if (/[^A-Za-z0-9]/.test(v)) score++;
+    const bar = document.getElementById('pwStrengthBar');
+    const lbl = document.getElementById('pwStrengthLbl');
+    const map = [
+      ['0%','',''],
+      ['25%','#C8102E','Weak'],
+      ['50%','#e8a020','Fair'],
+      ['75%','#3a90d4','Good'],
+      ['100%','#1a9e5c','Strong']
+    ];
+    bar.style.width = map[score][0];
+    bar.style.background = map[score][1];
+    lbl.textContent = map[score][2];
+    lbl.style.color = map[score][1];
+  });
+
+  /* ── live validation ── */
+  document.getElementById('company_name').addEventListener('blur', function() {
+    this.value.trim() ? clearErr('company_name') : showErr('company_name');
+  });
+  document.getElementById('email').addEventListener('blur', function() {
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.value.trim()) ? clearErr('email') : showErr('email');
+  });
+  document.getElementById('password').addEventListener('blur', function() {
+    this.value.length >= 8 ? clearErr('password') : showErr('password');
+  });
+  document.getElementById('confirm_password').addEventListener('blur', function() {
+    this.value === document.getElementById('password').value ? clearErr('confirm_password') : showErr('confirm_password');
+  });
+
+  /* ── submit ── */
+  document.getElementById('regForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    let valid = true;
+
+    const company = document.getElementById('company_name').value.trim();
+    const email   = document.getElementById('email').value.trim();
+    const pass    = document.getElementById('password').value;
+    const confirm = document.getElementById('confirm_password').value;
+    const enqId   = document.getElementById('enquiry_id').value.trim();
+
+    if (!company)                                    { showErr('company_name'); valid = false; } else clearErr('company_name');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))  { showErr('email');        valid = false; } else clearErr('email');
+    if (pass.length < 8)                             { showErr('password');     valid = false; } else clearErr('password');
+    if (pass !== confirm)                            { showErr('confirm_password'); valid = false; } else clearErr('confirm_password');
+    if (!valid) return;
+
+    const btn = document.getElementById('regBtn');
+    btn.textContent = 'Creating account…'; btn.disabled = true;
+
+    const body = new URLSearchParams({
+      company_name: company, email, password: pass, confirm_password: confirm
+    });
+    if (enqId) body.append('enquiry_id', enqId);
+
+    try {
+      const res  = await fetch('api/distributor/register.php', { method: 'POST', body });
+      const data = await res.json();
+
+      if (data.success) {
+        showBanner('ok', '✅ ' + data.message);
+        document.getElementById('regForm').style.display = 'none';
+        document.getElementById('pendingNote').style.display = 'none';
+      } else {
+        showBanner('err', '⚠️ ' + data.message);
+        btn.textContent = 'Create Account'; btn.disabled = false;
+      }
+    } catch {
+      showBanner('err', '⚠️ Network error. Please try again.');
+      btn.textContent = 'Create Account'; btn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Detail — Dairich Distributor Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dist-portal.css">
+</head>
+<body>
+
+<nav class="portal-bar">
+  <a href="profile.html" class="pbar-logo">Dairich <span>Distributor Portal</span></a>
+  <ul class="pbar-nav">
+    <li><a href="profile.html">Dashboard</a></li>
+    <li><a href="place.html">Place Order</a></li>
+    <li><a href="orders_list.html" class="active">My Orders</a></li>
+    <li><a href="feedback_list.html">Feedback</a></li>
+  </ul>
+  <div class="pbar-right">
+    <div class="pbar-user"><div class="pbar-avatar" id="avatarInitial">D</div><span id="companyName">…</span></div>
+    <a href="#" class="pbar-logout" id="logoutBtn">Logout</a>
+  </div>
+</nav>
+
+<div class="portal-page">
+  <div class="dash-wrap" style="max-width:860px;">
+
+    <div style="margin-bottom:24px;">
+      <a href="orders_list.html" style="font-size:13px;color:var(--muted);text-decoration:none;">&larr; Back to Orders</a>
+    </div>
+
+    <div class="page-hdr">
+      <p class="page-hdr-tag">Order Details</p>
+      <h1 class="page-hdr-title" id="pageTitle">Order <span>#—</span></h1>
+    </div>
+
+    <div id="detailContent">
+      <div style="text-align:center;padding:48px;color:var(--muted);">Loading order details…</div>
+    </div>
+
+  </div>
+</div>
+
+<footer class="portal-footer">
+  <div class="portal-footer-logo">Dairich</div>
+  <div class="portal-footer-copy">© 2024 Dairich Ice Cream. All Rights Reserved.</div>
+</footer>
+
+<script>
+  const token   = localStorage.getItem('dairich_token');
+  const company = localStorage.getItem('dairich_company') || 'Distributor';
+  if (!token) window.location.href = 'login.html';
+  document.getElementById('companyName').textContent   = company;
+  document.getElementById('avatarInitial').textContent = company.charAt(0).toUpperCase();
+
+  const params   = new URLSearchParams(window.location.search);
+  const order_id = params.get('order_id');
+  if (!order_id) window.location.href = 'orders_list.html';
+
+  function pill(status) {
+    const map = { pending:'pill-pending', confirmed:'pill-confirmed', dispatched:'pill-dispatched', delivered:'pill-delivered', cancelled:'pill-cancelled' };
+    return `<span class="pill ${map[status]||'pill-pending'}">${status||'—'}</span>`;
+  }
+
+  async function loadDetail() {
+    try {
+      const res  = await fetch(`api/orders/detail.php?order_id=${order_id}`, { headers:{'Authorization':'Bearer '+token} });
+      const data = await res.json();
+      if (!data.success) { document.getElementById('detailContent').innerHTML = `<div class="alert alert-err">${data.message}</div>`; return; }
+      const o = data.order;
+
+      document.getElementById('pageTitle').innerHTML = `Order <span>#${o.id}</span>`;
+
+      const itemsRows = (o.items||[]).map(i=>`
+        <div class="info-row">
+          <span class="info-key">${i.product_name}</span>
+          <span class="info-val">${i.quantity_boxes} boxes ${i.price_per_box ? '— ₹'+(i.quantity_boxes*i.price_per_box).toLocaleString('en-IN') : ''}</span>
+        </div>`).join('');
+
+      document.getElementById('detailContent').innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+          <div class="info-card">
+            <div class="info-card-title">Order Info</div>
+            <div class="info-row"><span class="info-key">Order ID</span><span class="info-val">#${o.id}</span></div>
+            <div class="info-row"><span class="info-key">Date</span><span class="info-val">${new Date(o.order_date).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}</span></div>
+            <div class="info-row"><span class="info-key">Order Status</span><span class="info-val">${pill(o.status)}</span></div>
+            <div class="info-row"><span class="info-key">Total Amount</span><span class="info-val" style="font-weight:700;color:var(--red);">₹${parseFloat(o.total_amount||0).toLocaleString('en-IN')}</span></div>
+            ${o.notes?`<div class="info-row"><span class="info-key">Notes</span><span class="info-val">${o.notes}</span></div>`:''}
+          </div>
+          <div class="info-card">
+            <div class="info-card-title">Delivery Info</div>
+            <div class="info-row"><span class="info-key">Delivery Status</span><span class="info-val">${pill(o.delivery_status)}</span></div>
+            <div class="info-row"><span class="info-key">Expected Date</span><span class="info-val">${o.expected_date?new Date(o.expected_date).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}):'TBD'}</span></div>
+            <div class="info-row"><span class="info-key">Delivered On</span><span class="info-val">${o.delivered_date?new Date(o.delivered_date).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}):'—'}</span></div>
+            ${o.tracking_notes?`<div class="info-row"><span class="info-key">Tracking Notes</span><span class="info-val">${o.tracking_notes}</span></div>`:''}
+          </div>
+        </div>
+
+        <div class="info-card" style="margin-top:0;">
+          <div class="info-card-title">Items Ordered</div>
+          ${itemsRows || '<p style="color:var(--muted);font-size:14px;">No items found.</p>'}
+        </div>
+
+        <div style="display:flex;gap:14px;flex-wrap:wrap;">
+          <a href="track.html?order_id=${o.id}" class="btn-primary" style="width:auto;padding:14px 32px;">Track Delivery</a>
+          ${o.delivery_status==='delivered'?`<a href="feedback_submit.html?order_id=${o.id}" class="btn-secondary">Leave Feedback</a>`:''}
+          <a href="orders_list.html" class="btn-secondary">&larr; Back to Orders</a>
+        </div>
+      `;
+    } catch {
+      document.getElementById('detailContent').innerHTML = '<div class="alert alert-err">Could not load order details.</div>';
+    }
+  }
+
+  document.getElementById('logoutBtn').addEventListener('click', e => {
+    e.preventDefault();
+    fetch('api/distributor/logout.php', { method:'POST', headers:{'Authorization':'Bearer '+token} });
+    localStorage.clear(); window.location.href = 'login.html';
+  });
+
+  loadDetail();
+</script>
+</body>
+</html>
