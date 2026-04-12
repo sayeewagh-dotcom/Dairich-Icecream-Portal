@@ -231,18 +231,26 @@
               <span class="fg-err" id="err-enq_name">Full name is required.</span>
             </div>
             <div class="fg">
+              <label>Company Name</label>
+              <input type="text" id="enq_company" placeholder="e.g. Sharma Distributors">
+              <span class="fg-err" id="err-enq_company">Company name is required.</span>
+            </div>
+          </div>
+
+          <div class="frow">
+            <div class="fg">
               <label>Business Email</label>
               <input type="email" id="enq_email" placeholder="name@company.com">
               <span class="fg-err" id="err-enq_email">Enter a valid email address.</span>
             </div>
+            <div class="fg">
+              <label>Phone Number</label>
+              <input type="tel" id="enq_phone" placeholder="+91 98765 43210">
+              <span class="fg-err" id="err-enq_phone">Enter a valid 10-digit phone number.</span>
+            </div>
           </div>
 
-          <!-- ── Phone number (new field) ── -->
-          <div class="fg" style="margin-bottom:16px;">
-            <label>Phone Number</label>
-            <input type="tel" id="enq_phone" placeholder="+91 98765 43210">
-            <span class="fg-err" id="err-enq_phone">Enter a valid 10-digit phone number.</span>
-          </div>
+          
 
           <span class="flav-lbl">Interested Flavours (Select all that apply)</span>
           <div class="flav-row">
@@ -347,12 +355,14 @@
       let valid = true;
 
       const name    = document.getElementById('enq_name').value.trim();
+      const company = document.getElementById('enq_company').value.trim();
       const email   = document.getElementById('enq_email').value.trim();
       const rawPhone = document.getElementById('enq_phone').value.replace(/[\s\-\(\)]/g,'').replace(/^\+91/,'');
       const message = document.getElementById('enq_message').value.trim();
       const flavours = [...document.querySelectorAll('.flav-btn.on')].map(b => b.dataset.flav);
 
       if (name.length < 2)                               { showFErr('enq_name');    valid = false; } else clearFErr('enq_name');
+      if (company.length < 2)                            { showFErr('enq_company'); valid = false; } else clearFErr('enq_company');
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))    { showFErr('enq_email');   valid = false; } else clearFErr('enq_email');
       if (!/^\d{10}$/.test(rawPhone))                    { showFErr('enq_phone');   valid = false; } else clearFErr('enq_phone');
       if (message.length < 10)                           { showFErr('enq_message', 'Please write at least 10 characters.'); valid = false; } else clearFErr('enq_message');
@@ -369,7 +379,7 @@
       try {
         const res  = await fetch('api/enquiry/submit.php', {
           method: 'POST',
-          body: new URLSearchParams({ contact_person: name, email, phone: rawPhone, flavours: flavours.join(', '), message })
+          body: new URLSearchParams({ company_name: company, contact_person: name, email, phone: rawPhone, flavours: flavours.join(', '), message })
         });
         const data = await res.json();
         if (data.success) {
