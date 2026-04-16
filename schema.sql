@@ -120,3 +120,30 @@ CREATE TABLE feedback (
  
 CREATE INDEX idx_feedback_distributor ON feedback (distributor_id);
 CREATE INDEX idx_feedback_order       ON feedback (order_id);
+
+
+CREATE TABLE admin_sessions (
+    id          SERIAL PRIMARY KEY,
+    admin_id    INT NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+    token       VARCHAR(64) NOT NULL UNIQUE,
+    expires_at  TIMESTAMP NOT NULL,
+    created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_asessions_token   ON admin_sessions (token);
+CREATE INDEX idx_asessions_admin   ON admin_sessions (admin_id);
+CREATE INDEX idx_asessions_expires ON admin_sessions (expires_at);
+
+CREATE TABLE distributor_sessions (
+    id              SERIAL PRIMARY KEY,
+    distributor_id  INT NOT NULL REFERENCES distributors(id) ON DELETE CASCADE,
+    token           VARCHAR(64) NOT NULL UNIQUE,
+    expires_at      TIMESTAMP NOT NULL,
+    created_at      TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_dsessions_token          ON distributor_sessions (token);
+CREATE INDEX idx_dsessions_distributor    ON distributor_sessions (distributor_id);
+CREATE INDEX idx_dsessions_expires        ON distributor_sessions (expires_at);
+
+CREATE INDEX idx_enquiry_flavours_product ON enquiry_flavours (product_id);
