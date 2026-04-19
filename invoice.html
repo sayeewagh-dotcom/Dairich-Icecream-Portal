@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoice — Dairich</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dist-portal.css">
+  <style>
+    @media print {
+      .portal-bar, .no-print, footer { display: none !important; }
+      .portal-page { padding-top: 0 !important; }
+      .invoice-wrap { box-shadow: none !important; }
+      body { background: white !important; }
+    }
+
+    .invoice-wrap {
+      max-width: 800px; margin: 40px auto;
+      background: white; border-radius: 20px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    .inv-header {
+      background: var(--red); color: white;
+      padding: 40px 48px; display: flex;
+      justify-content: space-between; align-items: flex-start;
+    }
+    .inv-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 36px; font-weight: 900;
+    }
+    .inv-logo span {
+      display: block; font-size: 12px;
+      font-weight: 600; letter-spacing: 2px;
+      text-transform: uppercase; opacity: 0.7;
+      font-family: 'DM Sans', sans-serif; margin-top: 4px;
+    }
+    .inv-number { text-align: right; }
+    .inv-number h2 {
+      font-size: 24px; font-weight: 900;
+      font-family: 'Playfair Display', serif;
+    }
+    .inv-number p { font-size: 13px; opacity: 0.7; margin-top: 4px; }
+
+    .inv-body { padding: 40px 48px; }
+
+    .inv-parties {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 32px; margin-bottom: 36px;
+    }
+    .inv-party-label {
+      font-size: 11px; font-weight: 700;
+      color: var(--muted); letter-spacing: 1.5px;
+      text-transform: uppercase; margin-bottom: 10px;
+    }
+    .inv-party-name {
+      font-size: 18px; font-weight: 700;
+      color: var(--dark); margin-bottom: 4px;
+    }
+    .inv-party p { font-size: 14px; color: #666; line-height: 1.6; }
+
+    .inv-table { width: 100%; border-collapse: collapse; margin-bottom: 28px; }
+    .inv-table thead th {
+      background: #f8f4ee; padding: 12px 16px;
+      font-size: 11px; font-weight: 700;
+      color: var(--muted); letter-spacing: 1.2px;
+      text-transform: uppercase; text-align: left;
+      border-bottom: 2px solid #ede8de;
+    }
+    .inv-table tbody td {
+      padding: 14px 16px; font-size: 14px;
+      color: var(--dark); border-bottom: 1px solid #f5f0e8;
+    }
+    .inv-table tfoot td {
+      padding: 12px 16px; font-size: 14px; font-weight: 600;
+    }
+
+    .inv-total-row td {
+      border-top: 2px solid var(--red) !important;
+      font-family: 'Playfair Display', serif;
+      font-size: 20px !important; font-weight: 900 !important;
+      color: var(--red) !important;
+    }
+
+    .inv-footer {
+      background: #f8f4ee; padding: 24px 48px;
+      display: flex; justify-content: space-between;
+      align-items: center; border-top: 1px solid #ede8de;
+    }
+    .inv-status-badge {
+      padding: 8px 20px; border-radius: 50px;
+      font-size: 13px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1px;
+    }
+
+    .print-btn {
+      background: var(--red); color: white;
+      border: none; border-radius: 50px;
+      padding: 12px 28px; font-size: 14px;
+      font-weight: 700; cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+    }
+    .print-btn:hover { background: #a00d23; transform: translateY(-2px); }
+  </style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<nav class="portal-bar" id="portalBar">
+  <a href="profile.html" class="pbar-logo">Dairich <span>Distributor Portal</span></a>
+  <div class="pbar-right">
+    <button class="print-btn no-print" onclick="window.print()">🖨️ Print / Save PDF</button>
+  </div>
+</nav>
+
+<div class="portal-page">
+  <div style="padding:24px 32px 0;" class="no-print">
+    <a href="orders_list.html" style="font-size:13px;color:var(--muted);text-decoration:none;">&larr; Back to Orders</a>
+  </div>
+
+  <div id="invoiceContent" style="padding:0 32px 48px;">
+    <div style="text-align:center;padding:48px;color:var(--muted);">Loading invoice…</div>
+  </div>
+</div>
+
+<script>
+  const token   = localStorage.getItem('dairich_token');
+  const company = localStorage.getItem('dairich_company') || 'Distributor';
+  if (!token) window.location.href = 'login.html';
+
+  const params   = new URLSearchParams(window.location.search);
+  const order_id = params.get('order_id');
+  if (!order_id) window.location.href = 'orders_list.html';
+
+  function statusStyle(status) {
+    const map = {
+      pending:    'background:#fff3cd;color:#856404',
+      confirmed:  'background:#cfe2ff;color:#084298',
+      dispatched: 'background:#e8d8f8;color:#4a1a90',
+      delivered:  'background:#d1f4e5;color:#0a5c36',
+      cancelled:  'background:#f8d7da;color:#842029',
+    };
+    return map[status] || map.pending;
+  }
+
+  async function loadInvoice() {
+    try {
+      const res  = await fetch(`api/orders/detail.php?order_id=${order_id}`, {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      const data = await res.json();
+      if (!data.success) {
+        document.getElementById('invoiceContent').innerHTML = `<div class="alert alert-err" style="margin:32px auto;max-width:600px;">${data.message}</div>`;
+        return;
+      }
+
+      const o      = data.order;
+      const items  = o.items || [];
+      const today  = new Date().toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' });
+      const orderDate = new Date(o.order_date).toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' });
+
+      const itemRows = items.map((item, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td><strong>${item.product_name}</strong></td>
+          <td style="text-align:center;">${item.quantity_boxes}</td>
+          <td style="text-align:right;">₹${parseFloat(item.price_per_box||0).toLocaleString('en-IN')}</td>
+          <td style="text-align:right;">₹${(item.quantity_boxes * (item.price_per_box||0)).toLocaleString('en-IN')}</td>
+        </tr>`).join('');
+
+      document.getElementById('invoiceContent').innerHTML = `
+        <div class="invoice-wrap">
+
+          <!-- HEADER -->
+          <div class="inv-header">
+            <div class="inv-logo">
+              Dairich
+              <span>Ice Cream — B2B Invoice</span>
+            </div>
+            <div class="inv-number">
+              <h2>Invoice #${String(o.id).padStart(5,'0')}</h2>
+              <p>Date: ${today}</p>
+              <p>Order Date: ${orderDate}</p>
+            </div>
+          </div>
+
+          <!-- BODY -->
+          <div class="inv-body">
+
+            <!-- FROM / TO -->
+            <div class="inv-parties">
+              <div class="inv-party">
+                <div class="inv-party-label">From</div>
+                <div class="inv-party-name">Dairich Ice Cream</div>
+                <p>123 Artisan Valley, Milk District<br>Gujarat, India — 380001<br>partnership@dairich.com<br>+91 98765 43210</p>
+              </div>
+              <div class="inv-party">
+                <div class="inv-party-label">Bill To</div>
+                <div class="inv-party-name">${company}</div>
+                <p>Distributor Account<br>Order Reference: #${o.id}<br>${o.delivery_status ? 'Delivery: ' + o.delivery_status : ''}</p>
+              </div>
+            </div>
+
+            <!-- ITEMS TABLE -->
+            <table class="inv-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Product</th>
+                  <th style="text-align:center;">Qty (Boxes)</th>
+                  <th style="text-align:right;">Price/Box</th>
+                  <th style="text-align:right;">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemRows || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">No items found.</td></tr>'}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="4" style="text-align:right;color:var(--muted);">Subtotal</td>
+                  <td style="text-align:right;">₹${parseFloat(o.total_amount||0).toLocaleString('en-IN')}</td>
+                </tr>
+                <tr>
+                  <td colspan="4" style="text-align:right;color:var(--muted);">Tax (GST)</td>
+                  <td style="text-align:right;color:var(--muted);">As applicable</td>
+                </tr>
+                <tr class="inv-total-row">
+                  <td colspan="4" style="text-align:right;">Total Amount</td>
+                  <td style="text-align:right;">₹${parseFloat(o.total_amount||0).toLocaleString('en-IN')}</td>
+                </tr>
+              </tfoot>
+            </table>
+
+            <!-- NOTES -->
+            ${o.notes ? `
+            <div style="background:#f8f4ee;border-radius:12px;padding:16px 20px;margin-bottom:24px;">
+              <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px;">Order Notes</div>
+              <p style="font-size:14px;color:#555;">${o.notes}</p>
+            </div>` : ''}
+
+            <!-- DELIVERY INFO -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+              <div style="background:#f8f4ee;border-radius:12px;padding:16px 20px;">
+                <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px;">Order Status</div>
+                <span class="inv-status-badge" style="${statusStyle(o.status)}">${o.status}</span>
+              </div>
+              <div style="background:#f8f4ee;border-radius:12px;padding:16px 20px;">
+                <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px;">Expected Delivery</div>
+                <p style="font-size:14px;font-weight:600;color:var(--dark);">${o.expected_date ? new Date(o.expected_date).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}) : 'TBD'}</p>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- FOOTER -->
+          <div class="inv-footer">
+            <div style="font-size:13px;color:var(--muted);">Thank you for partnering with Dairich! 🍨</div>
+            <div style="font-size:12px;color:var(--muted);text-align:right;">
+              This is a computer generated invoice.<br>
+              For queries: partnership@dairich.com
+            </div>
+          </div>
+
+        </div>
+      `;
+    } catch(err) {
+      document.getElementById('invoiceContent').innerHTML = `<div class="alert alert-err" style="margin:32px auto;max-width:600px;">Could not load invoice: ${err.message}</div>`;
+    }
+  }
+
+  loadInvoice();
+</script>
+</body>
+</html>

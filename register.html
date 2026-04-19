@@ -100,7 +100,6 @@
 </div>
 
 <script>
-  /* ── helpers ── */
   function togglePw(id, btn) {
     const i = document.getElementById(id);
     i.type = i.type === 'password' ? 'text' : 'password';
@@ -123,30 +122,24 @@
     el.innerHTML = msg; el.style.display = 'flex';
   }
 
-  /* ── password strength ── */
+  /* password strength */
   document.getElementById('password').addEventListener('input', function() {
     const v = this.value;
     let score = 0;
-    if (v.length >= 8)  score++;
-    if (/[A-Z]/.test(v)) score++;
-    if (/[0-9]/.test(v)) score++;
-    if (/[^A-Za-z0-9]/.test(v)) score++;
+    if (v.length >= 8)           score++;
+    if (/[A-Z]/.test(v))         score++;
+    if (/[0-9]/.test(v))         score++;
+    if (/[^A-Za-z0-9]/.test(v))  score++;
     const bar = document.getElementById('pwStrengthBar');
     const lbl = document.getElementById('pwStrengthLbl');
-    const map = [
-      ['0%','',''],
-      ['25%','#C8102E','Weak'],
-      ['50%','#e8a020','Fair'],
-      ['75%','#3a90d4','Good'],
-      ['100%','#1a9e5c','Strong']
-    ];
+    const map = [['0%','',''],['25%','#C8102E','Weak'],['50%','#e8a020','Fair'],['75%','#3a90d4','Good'],['100%','#1a9e5c','Strong']];
     bar.style.width = map[score][0];
     bar.style.background = map[score][1];
     lbl.textContent = map[score][2];
     lbl.style.color = map[score][1];
   });
 
-  /* ── live validation ── */
+  /* live validation */
   document.getElementById('company_name').addEventListener('blur', function() {
     this.value.trim() ? clearErr('company_name') : showErr('company_name');
   });
@@ -160,7 +153,7 @@
     this.value === document.getElementById('password').value ? clearErr('confirm_password') : showErr('confirm_password');
   });
 
-  /* ── submit ── */
+  /* submit */
   document.getElementById('regForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     let valid = true;
@@ -171,23 +164,31 @@
     const confirm = document.getElementById('confirm_password').value;
     const enqId   = document.getElementById('enquiry_id').value.trim();
 
-    if (!company)                                    { showErr('company_name'); valid = false; } else clearErr('company_name');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))  { showErr('email');        valid = false; } else clearErr('email');
-    if (pass.length < 8)                             { showErr('password');     valid = false; } else clearErr('password');
-    if (pass !== confirm)                            { showErr('confirm_password'); valid = false; } else clearErr('confirm_password');
+    if (!company)                                   { showErr('company_name'); valid = false; } else clearErr('company_name');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showErr('email');        valid = false; } else clearErr('email');
+    if (pass.length < 8)                            { showErr('password');     valid = false; } else clearErr('password');
+    if (pass !== confirm)                           { showErr('confirm_password'); valid = false; } else clearErr('confirm_password');
     if (!valid) return;
 
     const btn = document.getElementById('regBtn');
     btn.textContent = 'Creating account…'; btn.disabled = true;
 
-    const body = new URLSearchParams({
-      company_name: company, email, password: pass, confirm_password: confirm
-    });
+    const body = new URLSearchParams({ company_name: company, email, password: pass, confirm_password: confirm });
     if (enqId) body.append('enquiry_id', enqId);
 
     try {
       const res  = await fetch('api/distributor/register.php', { method: 'POST', body });
-      const data = await res.json();
+      const text = await res.text();
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        /* PHP returned an error page instead of JSON — show it */
+        showBanner('err', '⚠️ Server error: ' + text.substring(0, 300));
+        btn.textContent = 'Create Account'; btn.disabled = false;
+        return;
+      }
 
       if (data.success) {
         showBanner('ok', '✅ ' + data.message);
@@ -197,8 +198,8 @@
         showBanner('err', '⚠️ ' + data.message);
         btn.textContent = 'Create Account'; btn.disabled = false;
       }
-    } catch {
-      showBanner('err', '⚠️ Network error. Please try again.');
+    } catch(err) {
+      showBanner('err', '⚠️ Network error: ' + err.message);
       btn.textContent = 'Create Account'; btn.disabled = false;
     }
   });

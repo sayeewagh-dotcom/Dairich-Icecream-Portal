@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Distributors — Dairich Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dist-portal.css">
+</head>
+<body>
+
+<nav class="portal-bar" id="adminNav"></nav>
+
+<div class="portal-page">
+  <div class="dash-wrap">
+
+    <div class="page-hdr" style="display:flex;justify-content:space-between;align-items:flex-end;">
+      <div>
+        <p class="page-hdr-tag">Manage</p>
+        <h1 class="page-hdr-title">Distributors</h1>
+      </div>
+    </div>
+
+    <!-- Filter pills -->
+    <div style="display:flex;gap:10px;margin-bottom:24px;">
+      <button class="flav-btn on" onclick="filterDist('all',this)">All</button>
+      <button class="flav-btn" onclick="filterDist('true',this)">Active</button>
+      <button class="flav-btn" onclick="filterDist('false',this)">Pending Approval</button>
+    </div>
+
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Company</th>
+            <th>Email</th>
+            <th>Contact</th>
+            <th>Orders</th>
+            <th>Joined</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="distBody">
+          <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px;">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<footer class="portal-footer">
+  <div class="portal-footer-logo">Dairich Admin</div>
+  <div class="portal-footer-copy">© 2024 Dairich Ice Cream. All Rights Reserved.</div>
+</footer>
+
+<script src="admin-portal.js"></script>
+<script>
+  const token = adminInit('distributors');
+  let allDist = [];
+
+  async function loadDistributors(filter='') {
+    try {
+      const url  = 'api/admin/distributors/distributors_list.php' + (filter ? '?active='+filter : '');
+      const res  = await fetch(url, { headers:{'Authorization':'Bearer '+token} });
+      const data = await res.json();
+      allDist = data.distributors || [];
+      renderDist(allDist);
+    } catch(e) {
+      document.getElementById('distBody').innerHTML = '<tr><td colspan="8" class="alert alert-err">Could not load distributors.</td></tr>';
+    }
+  }
+
+  function renderDist(list) {
+    const tbody = document.getElementById('distBody');
+    if (!list.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px;">No distributors found.</td></tr>'; return; }
+    tbody.innerHTML = list.map(d => `
+      <tr>
+        <td>#${d.id}</td>
+        <td><strong>${d.company_name}</strong></td>
+        <td>${d.email}</td>
+        <td>${d.contact_person||'—'}</td>
+        <td>${d.total_orders||0}</td>
+        <td>${new Date(d.created_at).toLocaleDateString('en-IN')}</td>
+        <td>${d.is_active ? '<span class="pill pill-delivered">Active</span>' : '<span class="pill pill-pending">Pending</span>'}</td>
+        <td style="white-space:nowrap;">
+          ${!d.is_active
+            ? `<button onclick="activateDist(${d.id})" class="btn-yellow-sm" style="font-size:12px;padding:6px 14px;">✅ Approve</button>`
+            : `<button onclick="deactivateDist(${d.id})" class="btn-secondary" style="font-size:12px;padding:6px 14px;color:var(--red);border-color:var(--red);">Deactivate</button>`
+          }
+        </td>
+      </tr>`).join('');
+  }
+
+  function filterDist(filter, btn) {
+    document.querySelectorAll('.flav-btn').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    loadDistributors(filter === 'all' ? '' : filter);
+  }
+
+  async function activateDist(id) {
+    if (!confirmAction('Approve this distributor? They will be able to log in.')) return;
+    try {
+      const res  = await fetch('api/admin/distributors/activate.php', {
+        method: 'POST',
+        headers: {'Authorization':'Bearer '+token, 'Content-Type':'application/json'},
+        body: JSON.stringify({ distributor_id: id })
+      });
+      const data = await res.json();
+      if (data.success) { toast('Distributor approved!'); loadDistributors(); }
+      else toast(data.message, 'err');
+    } catch { toast('Network error.', 'err'); }
+  }
+
+  async function deactivateDist(id) {
+    if (!confirmAction('Deactivate this distributor? Their sessions will be terminated.')) return;
+    try {
+      const res  = await fetch('api/admin/distributors/deactivate.php', {
+        method: 'POST',
+        headers: {'Authorization':'Bearer '+token, 'Content-Type':'application/json'},
+        body: JSON.stringify({ distributor_id: id })
+      });
+      const data = await res.json();
+      if (data.success) { toast('Distributor deactivated.'); loadDistributors(); }
+      else toast(data.message, 'err');
+    } catch { toast('Network error.', 'err'); }
+  }
+
+  /* auto-filter from URL param */
+  const urlFilter = new URLSearchParams(window.location.search).get('filter');
+  if (urlFilter === 'false') {
+    document.querySelectorAll('.flav-btn').forEach(b => b.classList.remove('on'));
+    document.querySelectorAll('.flav-btn')[2].classList.add('on');
+    loadDistributors('false');
+  } else {
+    loadDistributors();
+  }
+</script>
+</body>
+</html>

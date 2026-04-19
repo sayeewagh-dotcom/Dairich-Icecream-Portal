@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orders — Dairich Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dist-portal.css">
+  <style>
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    .modal-box { background:var(--white); border-radius:20px; padding:36px; width:100%; max-width:480px; }
+    .modal-title { font-size:20px; font-weight:700; color:var(--dark); margin-bottom:20px; }
+  </style>
+</head>
+<body>
+
+<nav class="portal-bar" id="adminNav"></nav>
+
+<div class="portal-page">
+  <div class="dash-wrap">
+
+    <div class="page-hdr">
+      <p class="page-hdr-tag">Manage</p>
+      <h1 class="page-hdr-title">All <span>Orders</span></h1>
+    </div>
+
+    <!-- Filter -->
+    <div style="display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap;">
+      <button class="flav-btn on" onclick="filterOrders('',this)">All</button>
+      <button class="flav-btn" onclick="filterOrders('pending',this)">Pending</button>
+      <button class="flav-btn" onclick="filterOrders('confirmed',this)">Confirmed</button>
+      <button class="flav-btn" onclick="filterOrders('processing',this)">Processing</button>
+      <button class="flav-btn" onclick="filterOrders('dispatched',this)">Dispatched</button>
+      <button class="flav-btn" onclick="filterOrders('delivered',this)">Delivered</button>
+      <button class="flav-btn" onclick="filterOrders('cancelled',this)">Cancelled</button>
+    </div>
+
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Order #</th>
+            <th>Distributor</th>
+            <th>Date</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Delivery</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="ordersBody">
+          <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px;">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<!-- UPDATE STATUS MODAL -->
+<div class="modal-overlay" id="statusModal">
+  <div class="modal-box">
+    <div class="modal-title">Update Order #<span id="modalOrderId"></span></div>
+
+    <div class="form-group">
+      <label>Order Status</label>
+      <select id="modalOrderStatus">
+        <option value="pending">Pending</option>
+        <option value="confirmed">Confirmed</option>
+        <option value="processing">Processing</option>
+        <option value="dispatched">Dispatched</option>
+        <option value="delivered">Delivered</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+    </div>
+
+    <div style="border-top:1px solid var(--border);margin:20px 0;padding-top:20px;">
+      <div style="font-size:14px;font-weight:700;color:var(--dark);margin-bottom:14px;">Delivery Update</div>
+
+      <div class="form-group">
+        <label>Delivery Status</label>
+        <select id="modalDeliveryStatus">
+          <option value="pending">Pending</option>
+          <option value="in_transit">In Transit</option>
+          <option value="out_for_delivery">Out for Delivery</option>
+          <option value="delivered">Delivered</option>
+          <option value="failed">Failed</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Expected Date</label>
+          <input type="date" id="modalExpected">
+        </div>
+        <div class="form-group">
+          <label>Delivered Date</label>
+          <input type="date" id="modalDelivered">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Tracking Notes</label>
+        <textarea id="modalTracking" placeholder="e.g. Out for delivery via BlueDart" style="min-height:72px;"></textarea>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;">
+      <button class="btn-primary" id="modalSaveBtn" onclick="saveOrderUpdate()">Save Changes</button>
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<footer class="portal-footer">
+  <div class="portal-footer-logo">Dairich Admin</div>
+  <div class="portal-footer-copy">© 2024 Dairich Ice Cream. All Rights Reserved.</div>
+</footer>
+
+<script src="admin-portal.js"></script>
+<script>
+  const token = adminInit('orders');
+  let currentOrderId = null;
+
+  async function loadOrders(status='') {
+    try {
+      const url  = 'api/admin/order/order_list.php' + (status ? '?status='+status : '');
+      const res  = await fetch(url, { headers:{'Authorization':'Bearer '+token} });
+      const data = await res.json();
+      const orders = data.orders || [];
+      const tbody  = document.getElementById('ordersBody');
+      if (!orders.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px;">No orders found.</td></tr>'; return; }
+      tbody.innerHTML = orders.map(o => `
+        <tr>
+          <td><strong>#${o.id}</strong></td>
+          <td>${o.distributor_name}<br><small style="color:var(--muted)">${o.distributor_email}</small></td>
+          <td>${new Date(o.order_date).toLocaleDateString('en-IN')}</td>
+          <td>₹${parseFloat(o.total_amount||0).toLocaleString('en-IN')}</td>
+          <td>${pill(o.status)}</td>
+          <td>${pill(o.delivery_status||'pending')}</td>
+          <td><button class="btn-yellow-sm" style="font-size:12px;padding:6px 14px;" onclick="openModal(${o.id},'${o.status}','${o.delivery_status||'pending'}','${o.expected_date||''}','${o.delivered_date||''}')">Update</button></td>
+        </tr>`).join('');
+    } catch(e) {
+      document.getElementById('ordersBody').innerHTML = '<tr><td colspan="7" style="text-align:center;" class="alert alert-err">Could not load orders.</td></tr>';
+    }
+  }
+
+  function filterOrders(status, btn) {
+    document.querySelectorAll('.flav-btn').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    loadOrders(status);
+  }
+
+  function openModal(orderId, orderStatus, deliveryStatus, expectedDate, deliveredDate) {
+    currentOrderId = orderId;
+    document.getElementById('modalOrderId').textContent    = orderId;
+    document.getElementById('modalOrderStatus').value     = orderStatus;
+    document.getElementById('modalDeliveryStatus').value  = deliveryStatus;
+    document.getElementById('modalExpected').value        = expectedDate || '';
+    document.getElementById('modalDelivered').value       = deliveredDate || '';
+    document.getElementById('modalTracking').value        = '';
+    document.getElementById('statusModal').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('statusModal').classList.remove('open');
+    currentOrderId = null;
+  }
+
+  async function saveOrderUpdate() {
+    const btn = document.getElementById('modalSaveBtn');
+    btn.textContent = 'Saving…'; btn.disabled = true;
+
+    const orderStatus    = document.getElementById('modalOrderStatus').value;
+    const deliveryStatus = document.getElementById('modalDeliveryStatus').value;
+    const expectedDate   = document.getElementById('modalExpected').value;
+    const deliveredDate  = document.getElementById('modalDelivered').value;
+    const trackingNotes  = document.getElementById('modalTracking').value.trim();
+
+    try {
+      /* update order status */
+      const r1 = await fetch('api/admin/order/update_status.php', {
+        method: 'POST',
+        headers: {'Authorization':'Bearer '+token, 'Content-Type':'application/json'},
+        body: JSON.stringify({ order_id: currentOrderId, status: orderStatus })
+      });
+      const d1 = await r1.json();
+      if (!d1.success) { toast(d1.message, 'err'); btn.textContent='Save Changes'; btn.disabled=false; return; }
+
+      /* update delivery */
+      const r2 = await fetch('api/admin/delivery/deliveries_update.php', {
+        method: 'POST',
+        headers: {'Authorization':'Bearer '+token, 'Content-Type':'application/json'},
+        body: JSON.stringify({ order_id: currentOrderId, status: deliveryStatus, expected_date: expectedDate, delivered_date: deliveredDate, tracking_notes: trackingNotes })
+      });
+      const d2 = await r2.json();
+      if (!d2.success) { toast(d2.message, 'err'); btn.textContent='Save Changes'; btn.disabled=false; return; }
+
+      toast('Order updated successfully!');
+      closeModal();
+      loadOrders();
+    } catch { toast('Network error.', 'err'); }
+    btn.textContent = 'Save Changes'; btn.disabled = false;
+  }
+
+  /* close modal on overlay click */
+  document.getElementById('statusModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  loadOrders();
+</script>
+</body>
+</html>

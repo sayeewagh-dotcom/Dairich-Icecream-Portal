@@ -30,15 +30,17 @@ function clean(string $value): string {
     return trim(strip_tags($value));
 }
 
-/**
- * Return a field from $_POST, cleaned. Returns '' if missing.
- */
 function post(string $key): string {
-    return clean($_POST[$key] ?? '');
+    if (isset($_POST[$key])) {
+        return clean($_POST[$key]);
+    }
+    static $json = null;
+    if ($json === null) {
+        $json = json_decode(file_get_contents('php://input'), true) ?? [];
+    }
+    return clean((string)($json[$key] ?? ''));
 }
-
-/**
- * Validate an email address.
+ /* Validate an email address.
  */
 function valid_email(string $email): bool {
     return (bool) filter_var($email, FILTER_VALIDATE_EMAIL);

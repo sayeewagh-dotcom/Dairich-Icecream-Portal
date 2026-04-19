@@ -62,12 +62,12 @@
 
   /* timeline steps in order */
   const STEPS = [
-    { key:'pending',    label:'Order Placed',      sub:'Your order has been received.',          icon:'🧾' },
-    { key:'confirmed',  label:'Order Confirmed',   sub:'Dairich has confirmed your order.',       icon:'✅' },
-    { key:'dispatched', label:'Out for Delivery',  sub:'Your order is on its way!',              icon:'🚚' },
-    { key:'delivered',  label:'Delivered',          sub:'Order delivered successfully.',          icon:'🏁' },
-  ];
-  const ORDER = ['pending','confirmed','dispatched','delivered'];
+    { key:'pending',          label:'Order Placed',     sub:'Your order has been received.',        icon:'🧾' },
+    { key:'in_transit',       label:'In Transit',       sub:'Your order is on its way!',            icon:'🚚' },
+    { key:'out_for_delivery', label:'Out for Delivery', sub:'Your order is arriving soon!',         icon:'📦' },
+    { key:'delivered',        label:'Delivered',        sub:'Order delivered successfully.',        icon:'🏁' },
+];
+const ORDER = ['pending','in_transit','out_for_delivery','delivered'];
 
   async function loadTracking() {
     try {

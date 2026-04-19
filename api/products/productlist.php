@@ -17,12 +17,11 @@ require_method('GET');
 
 try {
     $stmt = db()->query("
-        SELECT id, name, description, tag, image_path
-        FROM   products
-        WHERE  is_active = TRUE
-        ORDER  BY id ASC
-    ");
-
+    SELECT id, name, description, tag, image_path, price_per_box
+    FROM   products
+    WHERE  is_active = TRUE
+    ORDER  BY id ASC
+");
     $products = $stmt->fetchAll();
 
     json_response(true, 'OK', ['products' => $products]);

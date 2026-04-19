@@ -12,7 +12,7 @@ function db(): PDO {
         $port     = '5432';
         $dbname   = 'dairich';
         $user     = 'postgres';      // your pgAdmin username
-        $password = '';              // your pgAdmin password
+        $password = '#Sayee212';              // your pgAdmin password
 
         $pdo = new PDO(
             "pgsql:host=$host;port=$port;dbname=$dbname",

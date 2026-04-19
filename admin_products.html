@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Products — Dairich Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dist-portal.css">
+  <style>
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    .modal-box { background:var(--white); border-radius:20px; padding:36px; width:100%; max-width:480px; }
+    .modal-title { font-size:20px; font-weight:700; color:var(--dark); margin-bottom:20px; }
+  </style>
+</head>
+<body>
+
+<nav class="portal-bar" id="adminNav"></nav>
+
+<div class="portal-page">
+  <div class="dash-wrap">
+
+    <div class="page-hdr" style="display:flex;justify-content:space-between;align-items:flex-end;">
+      <div>
+        <p class="page-hdr-tag">Manage</p>
+        <h1 class="page-hdr-title">Products</h1>
+      </div>
+      <button class="btn-yellow-sm" onclick="openAddModal()" style="margin-bottom:8px;">+ Add Product</button>
+    </div>
+
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Name</th><th>Description</th><th>Tag</th><th>Status</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="productsBody">
+          <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px;">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="productModal">
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitle">Add Product</div>
+    <input type="hidden" id="modalProductId" value="">
+
+    <div class="form-group">
+      <label>Product Name</label>
+      <input type="text" id="modalName" placeholder="e.g. Kesar Pista">
+      <span class="field-err" id="err-modalName">Product name is required.</span>
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <textarea id="modalDesc" placeholder="Short description…" style="min-height:80px;"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Tag</label>
+        <input type="text" id="modalTag" placeholder="e.g. Bestseller">
+      </div>
+      <div class="form-group">
+        <label>Image Path</label>
+        <input type="text" id="modalImage" placeholder="images/product.jpg">
+      </div>
+    </div>
+    <div class="form-group" id="activeToggleWrap" style="display:none;">
+      <label>Status</label>
+      <select id="modalActive">
+        <option value="true">Active</option>
+        <option value="false">Inactive</option>
+      </select>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-top:8px;">
+      <button class="btn-primary" id="modalSaveBtn" onclick="saveProduct()">Save Product</button>
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<footer class="portal-footer">
+  <div class="portal-footer-logo">Dairich Admin</div>
+  <div class="portal-footer-copy">© 2024 Dairich Ice Cream. All Rights Reserved.</div>
+</footer>
+
+<script src="admin-portal.js"></script>
+<script>
+  const token = adminInit('products');
+
+  async function loadProducts() {
+    try {
+      const res  = await fetch('api/products/productlist.php', { headers:{'Authorization':'Bearer '+token} });
+      const data = await res.json();
+      const list = data.products || [];
+      const tbody = document.getElementById('productsBody');
+      if (!list.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px;">No products found.</td></tr>'; return; }
+      tbody.innerHTML = list.map(p => `
+        <tr>
+          <td>#${p.id}</td>
+          <td><strong>${p.name}</strong></td>
+          <td style="max-width:220px;color:var(--muted);font-size:13px;">${p.description||'—'}</td>
+          <td>${p.tag ? `<span class="pill pill-confirmed">${p.tag}</span>` : '—'}</td>
+          <td>${p.is_active ? '<span class="pill pill-delivered">Active</span>' : '<span class="pill pill-cancelled">Inactive</span>'}</td>
+          <td style="white-space:nowrap;">
+            <button class="btn-secondary" style="font-size:12px;padding:6px 12px;margin-right:6px;" onclick="openEditModal(${p.id},'${p.name}','${(p.description||'').replace(/'/g,"\\'")}','${p.tag||''}','${p.image_path||''}',${p.is_active})">Edit</button>
+            <button onclick="deleteProduct(${p.id})" style="font-size:12px;padding:6px 12px;border-radius:50px;border:1.5px solid var(--red);color:var(--red);background:none;cursor:pointer;">Delete</button>
+          </td>
+        </tr>`).join('');
+    } catch { document.getElementById('productsBody').innerHTML = '<tr><td colspan="6" class="alert alert-err">Could not load products.</td></tr>'; }
+  }
+
+  function openAddModal() {
+    document.getElementById('modalTitle').textContent = 'Add Product';
+    document.getElementById('modalProductId').value  = '';
+    document.getElementById('modalName').value       = '';
+    document.getElementById('modalDesc').value       = '';
+    document.getElementById('modalTag').value        = '';
+    document.getElementById('modalImage').value      = '';
+    document.getElementById('activeToggleWrap').style.display = 'none';
+    document.getElementById('productModal').classList.add('open');
+  }
+
+  function openEditModal(id, name, desc, tag, image, isActive) {
+    document.getElementById('modalTitle').textContent     = 'Edit Product';
+    document.getElementById('modalProductId').value       = id;
+    document.getElementById('modalName').value            = name;
+    document.getElementById('modalDesc').value            = desc;
+    document.getElementById('modalTag').value             = tag;
+    document.getElementById('modalImage').value           = image;
+    document.getElementById('modalActive').value          = isActive ? 'true' : 'false';
+    document.getElementById('activeToggleWrap').style.display = 'flex';
+    document.getElementById('productModal').classList.add('open');
+  }
+
+  function closeModal() { document.getElementById('productModal').classList.remove('open'); }
+
+  async function saveProduct() {
+    const name = document.getElementById('modalName').value.trim();
+    if (!name) { document.getElementById('err-modalName').classList.add('show'); return; }
+    document.getElementById('err-modalName').classList.remove('show');
+
+    const id       = document.getElementById('modalProductId').value;
+    const isEdit   = !!id;
+    const btn      = document.getElementById('modalSaveBtn');
+    btn.textContent = 'Saving…'; btn.disabled = true;
+
+    const body = {
+      name,
+      description: document.getElementById('modalDesc').value.trim(),
+      tag:         document.getElementById('modalTag').value.trim(),
+      image_path:  document.getElementById('modalImage').value.trim(),
+    };
+    if (isEdit) { body.id = parseInt(id); body.is_active = document.getElementById('modalActive').value === 'true'; }
+
+    try {
+      const url  = isEdit ? 'api/admin/product/update.php' : 'api/admin/product/create.php';
+      const res  = await fetch(url, {
+        method: 'POST',
+        headers: {'Authorization':'Bearer '+token, 'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (data.success) { toast(isEdit ? 'Product updated!' : 'Product created!'); closeModal(); loadProducts(); }
+      else toast(data.message, 'err');
+    } catch { toast('Network error.', 'err'); }
+    btn.textContent = 'Save Product'; btn.disabled = false;
+  }
+
+  async function deleteProduct(id) {
+    if (!confirmAction('Deactivate this product? It will be hidden from orders.')) return;
+    try {
+      const res  = await fetch('api/admin/product/delete.php', {
+        method: 'POST',
+        headers: {'Authorization':'Bearer '+token, 'Content-Type':'application/json'},
+        body: JSON.stringify({ id })
+      });
+      const data = await res.json();
+      data.success ? (toast('Product deactivated.'), loadProducts()) : toast(data.message, 'err');
+    } catch { toast('Network error.', 'err'); }
+  }
+
+  document.getElementById('productModal').addEventListener('click', function(e) { if (e.target===this) closeModal(); });
+
+  loadProducts();
+</script>
+</body>
+</html>

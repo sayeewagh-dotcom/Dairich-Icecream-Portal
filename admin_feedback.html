@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feedback — Dairich Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dist-portal.css">
+</head>
+<body>
+
+<nav class="portal-bar" id="adminNav"></nav>
+
+<div class="portal-page">
+  <div class="dash-wrap">
+
+    <div class="page-hdr">
+      <p class="page-hdr-tag">Reviews</p>
+      <h1 class="page-hdr-title">All <span>Feedback</span></h1>
+    </div>
+
+    <!-- Summary stats -->
+    <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:28px;">
+      <div class="stat-card"><div class="stat-accent" style="background:var(--yellow)"></div><div class="stat-icon">⭐</div><div class="stat-val" id="avgRating">—</div><div class="stat-lbl">Average Rating</div></div>
+      <div class="stat-card"><div class="stat-accent" style="background:var(--red)"></div><div class="stat-icon">💬</div><div class="stat-val" id="totalFeedback">—</div><div class="stat-lbl">Total Reviews</div></div>
+      <div class="stat-card"><div class="stat-accent" style="background:#1a9e5c"></div><div class="stat-icon">😊</div><div class="stat-val" id="fiveStars">—</div><div class="stat-lbl">5-Star Reviews</div></div>
+    </div>
+
+    <!-- Filter by rating -->
+    <div style="display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap;align-items:center;">
+      <span style="font-size:13px;font-weight:600;color:var(--muted);">Filter by rating:</span>
+      <button class="flav-btn on" onclick="filterFeedback(0,this)">All</button>
+      <button class="flav-btn" onclick="filterFeedback(5,this)">⭐⭐⭐⭐⭐</button>
+      <button class="flav-btn" onclick="filterFeedback(4,this)">⭐⭐⭐⭐</button>
+      <button class="flav-btn" onclick="filterFeedback(3,this)">⭐⭐⭐</button>
+      <button class="flav-btn" onclick="filterFeedback(2,this)">⭐⭐</button>
+      <button class="flav-btn" onclick="filterFeedback(1,this)">⭐</button>
+    </div>
+
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Distributor</th>
+            <th>Order #</th>
+            <th>Rating</th>
+            <th>Message</th>
+            <th>Date</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody id="feedbackBody">
+          <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px;">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<footer class="portal-footer">
+  <div class="portal-footer-logo">Dairich Admin</div>
+  <div class="portal-footer-copy">© 2024 Dairich Ice Cream. All Rights Reserved.</div>
+</footer>
+
+<script src="admin-portal.js"></script>
+<script>
+  const token = adminInit('feedback');
+
+  function stars(n) {
+    return Array.from({length:5},(_,i)=>`<span style="opacity:${i<n?1:0.2}">⭐</span>`).join('');
+  }
+
+  async function loadFeedback(rating=0) {
+    try {
+      const url  = 'api/admin/admin_feedback/adminfeedback_list.php' + (rating ? '?rating='+rating : '');
+      const res  = await fetch(url, { headers:{'Authorization':'Bearer '+token} });
+      const data = await res.json();
+      const list = data.feedback || [];
+
+      document.getElementById('avgRating').textContent    = data.avg_rating || '—';
+      document.getElementById('totalFeedback').textContent = data.total || 0;
+      document.getElementById('fiveStars').textContent    = list.filter(f=>f.rating===5).length;
+
+      const tbody = document.getElementById('feedbackBody');
+      if (!list.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px;">No feedback found.</td></tr>'; return; }
+      tbody.innerHTML = list.map(f => `
+        <tr>
+          <td><strong>${f.distributor_name}</strong><br><small style="color:var(--muted)">${f.distributor_email}</small></td>
+          <td><a href="#" style="color:var(--red);font-weight:600;">#${f.order_id}</a></td>
+          <td>${stars(f.rating)} <span style="font-size:13px;font-weight:700;">${f.rating}/5</span></td>
+          <td style="max-width:240px;font-size:13px;color:#555;">${f.message ? `"${f.message}"` : '<em style="color:var(--muted)">No message</em>'}</td>
+          <td>${new Date(f.submitted_at).toLocaleDateString('en-IN')}</td>
+          <td>₹${parseFloat(f.total_amount||0).toLocaleString('en-IN')}</td>
+        </tr>`).join('');
+    } catch { document.getElementById('feedbackBody').innerHTML = '<tr><td colspan="6" class="alert alert-err">Could not load feedback.</td></tr>'; }
+  }
+
+  function filterFeedback(rating, btn) {
+    document.querySelectorAll('.flav-btn').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    loadFeedback(rating);
+  }
+
+  loadFeedback();
+</script>
+</body>
+</html>

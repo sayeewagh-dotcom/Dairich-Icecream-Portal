@@ -105,7 +105,8 @@
         </div>
 
         <div style="display:flex;gap:14px;flex-wrap:wrap;">
-          <a href="track.html?order_id=${o.id}" class="btn-primary" style="width:auto;padding:14px 32px;">Track Delivery</a>
+          <a href="invoice.html?order_id=${o.id}" class="btn-primary" style="width:auto;padding:14px 32px;">🧾 View Invoice</a>
+          <a href="track.html?order_id=${o.id}" class="btn-secondary">Track Delivery</a>
           ${o.delivery_status==='delivered'?`<a href="feedback_submit.html?order_id=${o.id}" class="btn-secondary">Leave Feedback</a>`:''}
           <a href="orders_list.html" class="btn-secondary">&larr; Back to Orders</a>
         </div>

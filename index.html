@@ -309,10 +309,14 @@
 
   <!-- ======= ENQUIRY FORM VALIDATION ======= -->
   <script>
-    /* ── flavour toggle ── */
-    document.querySelectorAll('.flav-btn').forEach(btn => {
-      btn.addEventListener('click', () => btn.classList.toggle('on'));
-    });
+        /* ── flavour toggle ── */
+document.querySelectorAll('.flav-btn').forEach(btn => {
+  btn.addEventListener('click', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.classList.toggle('on');
+  });
+});
 
     /* ── helpers ── */
     function showFErr(id, msg) {

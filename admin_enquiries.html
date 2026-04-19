@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enquiries — Dairich Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dist-portal.css">
+  <style>
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    .modal-box { background:var(--white); border-radius:20px; padding:36px; width:100%; max-width:500px; max-height:90vh; overflow-y:auto; }
+    .modal-title { font-size:20px; font-weight:700; color:var(--dark); margin-bottom:20px; }
+  </style>
+</head>
+<body>
+
+<nav class="portal-bar" id="adminNav"></nav>
+
+<div class="portal-page">
+  <div class="dash-wrap">
+
+    <div class="page-hdr">
+      <p class="page-hdr-tag">Manage</p>
+      <h1 class="page-hdr-title">Enquiries</h1>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap;">
+      <button class="flav-btn on" onclick="filterEnq('',this)">All</button>
+      <button class="flav-btn" onclick="filterEnq('new',this)">New</button>
+      <button class="flav-btn" onclick="filterEnq('reviewed',this)">Reviewed</button>
+      <button class="flav-btn" onclick="filterEnq('contacted',this)">Contacted</button>
+      <button class="flav-btn" onclick="filterEnq('closed',this)">Closed</button>
+    </div>
+
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Company</th>
+            <th>Contact</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Submitted</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="enqBody">
+          <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px;">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<!-- APPROVE MODAL -->
+<div class="modal-overlay" id="approveModal">
+  <div class="modal-box">
+    <div class="modal-title">Approve Enquiry #<span id="modalEnqId"></span></div>
+    <div id="modalEnqDetails" style="margin-bottom:20px;"></div>
+
+    <div class="form-group">
+      <label>Temporary Password for Distributor</label>
+      <div class="pw-wrap">
+        <input type="text" id="modalTempPass" placeholder="Min. 8 characters" value="Dairich@123">
+        </div>
+      <span class="field-err" id="err-modalTempPass">Min. 8 characters required.</span>
+    </div>
+
+    <div class="alert alert-info" style="margin-bottom:16px;">
+      ℹ️ This password will be given to the distributor to log in for the first time.
+    </div>
+
+    <div style="display:flex;gap:12px;">
+      <button class="btn-primary" id="modalApproveBtn" onclick="approveEnquiry()">✅ Approve & Create Account</button>
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<footer class="portal-footer">
+  <div class="portal-footer-logo">Dairich Admin</div>
+  <div class="portal-footer-copy">© 2024 Dairich Ice Cream. All Rights Reserved.</div>
+</footer>
+
+<script src="admin-portal.js"></script>
+<script>
+  const token = adminInit('enquiries');
+  let currentEnqId = null;
+
+  async function loadEnquiries(status='') {
+    try {
+      const url  = 'api/admin/enquires/list.php' + (status ? '?status='+status : '');
+      const res  = await fetch(url, { headers:{'Authorization':'Bearer '+token} });
+      const data = await res.json();
+      const list = data.enquiries || [];
+      const tbody = document.getElementById('enqBody');
+      if (!list.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px;">No enquiries found.</td></tr>'; return; }
+      tbody.innerHTML = list.map(e => `
+        <tr>
+          <td>#${e.id}</td>
+          <td><strong>${e.company_name}</strong></td>
+          <td>${e.contact_person}</td>
+          <td>${e.email}</td>
+          <td>${e.phone||'—'}</td>
+          <td>${new Date(e.submitted_at).toLocaleDateString('en-IN')}</td>
+          <td>${pill(e.status)}</td>
+          <td style="white-space:nowrap;">
+            ${e.status !== 'closed' && !e.distributor_id
+              ? `<button class="btn-yellow-sm" style="font-size:12px;padding:6px 12px;margin-right:4px;" onclick="openApproveModal(${e.id},'${e.company_name}','${e.email}','${e.contact_person}')">✅ Approve</button>`
+              : e.distributor_id ? `<span class="pill pill-delivered">Converted</span>` : ''
+            }
+            <select onchange="updateEnqStatus(${e.id}, this.value)" style="font-size:12px;padding:6px 8px;border-radius:8px;border:1.5px solid #ddd;font-family:inherit;cursor:pointer;">
+              <option value="">Update status</option>
+              <option value="new" ${e.status==='new'?'selected':''}>New</option>
+              <option value="reviewed" ${e.status==='reviewed'?'selected':''}>Reviewed</option>
+              <option value="contacted" ${e.status==='contacted'?'selected':''}>Contacted</option>
+              <option value="closed" ${e.status==='closed'?'selected':''}>Closed</option>
+            </select>
+          </td>
+        </tr>`).join('');
+    } catch(e) {
+      document.getElementById('enqBody').innerHTML = '<tr><td colspan="8" style="text-align:center;" class="alert alert-err">Could not load enquiries.</td></tr>';
+    }
+  }
+
+  function filterEnq(status, btn) {
+    document.querySelectorAll('.flav-btn').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    loadEnquiries(status);
+  }
+
+  async function updateEnqStatus(id, status) {
+    if (!status) return;
+    try {
+      const res  = await fetch('api/admin/enquires/update_status.php', {
+        method: 'POST',
+        headers: {'Authorization':'Bearer '+token, 'Content-Type':'application/json'},
+        body: JSON.stringify({ enquiry_id: id, status })
+      });
+      const data = await res.json();
+      data.success ? toast('Status updated!') : toast(data.message, 'err');
+      loadEnquiries();
+    } catch { toast('Network error.', 'err'); }
+  }
+
+  function openApproveModal(id, company, email, contact) {
+    currentEnqId = id;
+    document.getElementById('modalEnqId').textContent = id;
+    document.getElementById('modalEnqDetails').innerHTML = `
+      <div class="info-row"><span class="info-key">Company</span><span class="info-val">${company}</span></div>
+      <div class="info-row"><span class="info-key">Email</span><span class="info-val">${email}</span></div>
+      <div class="info-row"><span class="info-key">Contact</span><span class="info-val">${contact}</span></div>
+    `;
+    document.getElementById('approveModal').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('approveModal').classList.remove('open');
+    currentEnqId = null;
+  }
+
+  async function approveEnquiry() {
+    const pass = document.getElementById('modalTempPass').value.trim();
+    if (pass.length < 8) { document.getElementById('err-modalTempPass').classList.add('show'); return; }
+    document.getElementById('err-modalTempPass').classList.remove('show');
+
+    const btn = document.getElementById('modalApproveBtn');
+    btn.textContent = 'Approving…'; btn.disabled = true;
+
+    try {
+      const res  = await fetch('api/admin/enquires/approve.php', {
+        method: 'POST',
+        headers: {'Authorization':'Bearer '+token, 'Content-Type':'application/json'},
+        body: JSON.stringify({ enquiry_id: currentEnqId, password: pass })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast(`✅ Approved! Temp password: ${data.temp_password}`);
+        closeModal();
+        loadEnquiries();
+      } else {
+        toast(data.message, 'err');
+      }
+    } catch { toast('Network error.', 'err'); }
+    btn.textContent = '✅ Approve & Create Account'; btn.disabled = false;
+  }
+
+  document.getElementById('approveModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  loadEnquiries();
+</script>
+</body>
+</html>

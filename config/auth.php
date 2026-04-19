@@ -11,7 +11,11 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/helpers.php';
 
 function require_distributor_auth(): array {
-    $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    $header = $_SERVER['HTTP_AUTHORIZATION'] 
+       ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] 
+       ?? (getallheaders()['Authorization'] ?? '')
+       ?? (getallheaders()['authorization'] ?? '')
+       ?? '';
     $token  = null;
 
     if (preg_match('/Bearer\s+(.+)/i', $header, $m))
@@ -38,3 +42,5 @@ function require_distributor_auth(): array {
 
     return $distributor;
 }
+
+

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login — Dairich</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dist-portal.css">
+</head>
+<body>
+
+<div class="auth-page">
+
+  <!-- LEFT PANEL -->
+  <div class="auth-left" style="background:var(--navy);">
+    <div class="auth-left-logo">Dairich</div>
+    <h1 class="auth-left-title">Admin<br><span class="yt">Control</span><br>Panel.</h1>
+    <p class="auth-left-sub">Manage distributors, orders, enquiries and products from one place.</p>
+    <div class="auth-perks">
+      <div class="auth-perk"><div class="auth-perk-icon">👥</div><span>Approve & manage distributors</span></div>
+      <div class="auth-perk"><div class="auth-perk-icon">📦</div><span>Track and update all orders</span></div>
+      <div class="auth-perk"><div class="auth-perk-icon">🛍️</div><span>Manage product catalogue</span></div>
+    </div>
+  </div>
+
+  <!-- RIGHT FORM PANEL -->
+  <div class="auth-right">
+    <div class="auth-card">
+
+      <p style="font-size:12px;letter-spacing:1.5px;font-weight:700;text-transform:uppercase;color:var(--navy);margin-bottom:8px;">Admin Portal</p>
+      <h2 class="auth-card-title">Admin Login</h2>
+      <p class="auth-card-sub">Sign in with your admin credentials</p>
+
+      <div class="alert alert-err" id="errBanner" style="display:none;"></div>
+
+      <form id="loginForm" novalidate>
+
+        <div class="form-group">
+          <label>Admin Email</label>
+          <input type="email" id="email" placeholder="admin@dairich.com" autocomplete="email">
+          <span class="field-err" id="err-email">Please enter a valid email.</span>
+        </div>
+
+        <div class="form-group">
+          <label>Password</label>
+          <div class="pw-wrap">
+            <input type="password" id="password" placeholder="Enter your password">
+            <button type="button" class="pw-toggle" onclick="togglePw('password',this)">👁</button>
+          </div>
+          <span class="field-err" id="err-password">Password is required.</span>
+        </div>
+
+        <button type="submit" class="btn-primary" id="loginBtn" style="background:var(--navy);">Sign In to Admin</button>
+      </form>
+
+      <div style="text-align:center;margin-top:16px;">
+        <a href="index.html" style="font-size:13px;color:var(--muted);text-decoration:none;">&larr; Back to Dairich.com</a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  if (localStorage.getItem('dairich_admin_token')) window.location.href = 'admin_dashboard.html';
+
+  function togglePw(id, btn) {
+    const i = document.getElementById(id);
+    i.type = i.type === 'password' ? 'text' : 'password';
+    btn.textContent = i.type === 'password' ? '👁' : '🙈';
+  }
+  function showErr(id) { document.getElementById('err-'+id).classList.add('show'); document.getElementById(id).classList.add('error'); }
+  function clearErr(id){ document.getElementById('err-'+id).classList.remove('show'); document.getElementById(id).classList.remove('error'); }
+
+  document.getElementById('email').addEventListener('blur', function() {
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.value.trim()) ? clearErr('email') : showErr('email');
+  });
+  document.getElementById('password').addEventListener('blur', function() {
+    this.value.trim() ? clearErr('password') : showErr('password');
+  });
+
+  document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    let valid = true;
+    const email = document.getElementById('email').value.trim();
+    const pass  = document.getElementById('password').value.trim();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showErr('email');    valid = false; } else clearErr('email');
+    if (!pass)                                       { showErr('password'); valid = false; } else clearErr('password');
+    if (!valid) return;
+
+    const btn = document.getElementById('loginBtn');
+    btn.textContent = 'Signing in…'; btn.disabled = true;
+
+    try {
+      const res  = await fetch('api/admin/alogin.php', {
+        method: 'POST',
+        body: new URLSearchParams({ email, password: pass })
+      });
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch {
+        document.getElementById('errBanner').innerHTML = '⚠️ Server error: ' + text.substring(0,200);
+        document.getElementById('errBanner').style.display = 'flex';
+        btn.textContent = 'Sign In to Admin'; btn.disabled = false; return;
+      }
+
+      if (data.success) {
+        localStorage.setItem('dairich_admin_token', data.token);
+        localStorage.setItem('dairich_admin_name',  data.admin.name);
+        localStorage.setItem('dairich_admin_role',  data.admin.role);
+        window.location.href = 'admin_dashboard.html';
+      } else {
+        document.getElementById('errBanner').innerHTML = '⚠️ ' + data.message;
+        document.getElementById('errBanner').style.display = 'flex';
+        btn.textContent = 'Sign In to Admin'; btn.disabled = false;
+      }
+    } catch(err) {
+      document.getElementById('errBanner').innerHTML = '⚠️ Network error: ' + err.message;
+      document.getElementById('errBanner').style.display = 'flex';
+      btn.textContent = 'Sign In to Admin'; btn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

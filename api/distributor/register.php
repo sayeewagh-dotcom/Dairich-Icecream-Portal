@@ -26,7 +26,7 @@ $company_name    = post('company_name');
 $email           = post('email');
 $password        = post('password');
 $confirm         = post('confirm_password');
-$enquiry_id      = $_POST['enquiry_id'] ? (int)$_POST['enquiry_id'] : null;
+$enquiry_id      = !empty($_POST['enquiry_id']) ? (int)$_POST['enquiry_id'] : null;
 
 // ── Validate ─────────────────────────────────────────────────────
 if ($company_name === '')

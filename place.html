@@ -141,14 +141,14 @@
     selected.forEach(p => {
       const qty = parseInt(document.getElementById('qty-'+p.id)?.value) || 0;
       if (qty > 0) quantities[p.id] = qty;
-      rows += `<div class="info-row"><span class="info-key">${p.name}</span><span class="info-val">${qty} box${qty!==1?'es':''}${p.price_per_box?' — ₹'+(qty*p.price_per_box).toLocaleString('en-IN'):''}</span></div>`;
+      rows += `<div class="info-row"><span class="info-key">${p.name}</span><span class="info-val">${qty} box${qty!==1?'es':''} — ₹${(qty*(p.price_per_box||0)).toLocaleString('en-IN')}</span></div>`;
     });
     const card = document.getElementById('summaryCard');
     if (selected.length) {
       card.style.display = 'block';
       document.getElementById('summaryRows').innerHTML = rows;
       const total = selected.reduce((s,p)=>{ const q=quantities[p.id]||0; return s+(p.price_per_box?q*p.price_per_box:0); },0);
-      document.getElementById('totalAmount').textContent = total ? '₹'+total.toLocaleString('en-IN') : 'TBD';
+      document.getElementById('totalAmount').textContent = '₹'+total.toLocaleString('en-IN');
     } else { card.style.display = 'none'; }
   }
 
